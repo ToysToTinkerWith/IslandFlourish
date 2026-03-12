@@ -9,16 +9,19 @@ import { useRouter } from "next/router"
 
 /**
  * Island Flourish Footer (creative layout)
- * - Adds a small /flower.png next to the current page link (same as nav)
+ * - Shows a flower on the right side of the active page under Explore
+ * - Active state matches exact path OR nested routes:
+ *   e.g. /moments/1234 still highlights /moments
+ * - Scrolls to top on footer navigation
  */
 export default function IslandFlourishFooter({
   logoSrc = "/smallLogo.svg",
   logoAlt = "Island Flourish",
   onNavigate, // optional: (path) => void
   companyName = "Island Flourish",
-  tagline = "Florals for meaningful moments",
+  tagline = "Serving Whidbey Island Events & Venues",
   email = "hello@islandflourish.com", // change if needed
-  locationText = "Serving  Whidbey Island events & venues",
+  locationText = "Serving Whidbey Island Events & Venues",
   showTopDivider = true,
 }) {
   const isMobile = useMediaQuery("(max-width:600px)")
@@ -28,16 +31,33 @@ export default function IslandFlourishFooter({
   const links = useMemo(
     () => [
       { label: "Home", href: "/" },
-      { label: "Moments", href: "/moments" },
+      { label: "Gallery", href: "/gallery" },
+      { label: "A La Carte", href: "/carte" },
       { label: "Contact", href: "/contact" },
     ],
     []
   )
 
-  const go = (href) => {
-    if (onNavigate) onNavigate(href)
-    else if (router?.push) router.push(href)
-    else window.location.href = href
+  const scrollTop = () => {
+    if (typeof window === "undefined") return
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" })
+  }
+
+  const go = async (href) => {
+    scrollTop()
+
+    if (onNavigate) {
+      onNavigate(href)
+      return
+    }
+
+    if (router?.push) {
+      await router.push(href, undefined, { scroll: true })
+      scrollTop()
+      return
+    }
+
+    window.location.href = href
   }
 
   const currentPath = useMemo(() => {
@@ -49,32 +69,27 @@ export default function IslandFlourishFooter({
   }, [router?.asPath])
 
   const isActive = (href) => {
-    const norm = (p) => (p !== "/" ? p.replace(/\/+$/, "") : "/")
-    return norm(currentPath) === norm(href)
-  }
+    const normalize = (p) => {
+      if (!p) return "/"
+      const clean = p.split("?")[0].split("#")[0]
+      if (clean === "/") return "/"
+      return clean.replace(/\/+$/, "")
+    }
 
-  const Flower = ({ show }) =>
-    show ? (
-      <Box
-        component="img"
-        src="/flower.png"
-        alt=""
-        aria-hidden="true"
-        sx={{
-          height: 16,
-          width: 16,
-          display: "block",
-          ml: 1,
-        }}
-      />
-    ) : null
+    const path = normalize(currentPath)
+    const target = normalize(href)
+
+    if (target === "/") return path === "/"
+    return path === target || path.startsWith(`${target}/`)
+  }
 
   const year = new Date().getFullYear()
   const logoH = isMobile ? 120 : isCondensed ? 150 : 175
 
   return (
-    <Box component="footer" sx={{ background: "#121212", color: "inherit" }}>
-      {/* Top “crest” section */}
+    <Box component="footer" sx={{ background: "#EFE7DC", color: "inherit" }}>
+      <hr style={{ margin: 40, marginBottom: 0, border: "1px solid #304742" }} />
+
       <Box
         sx={{
           px: { xs: 2, md: 4 },
@@ -84,28 +99,9 @@ export default function IslandFlourishFooter({
           overflow: "hidden",
         }}
       >
-        {/* Background glow + subtle texture */}
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-          }}
-        />
-        <Box
-          sx={{
-            position: "absolute",
-            inset: -2,
-            pointerEvents: "none",
-            opacity: 0.18,
-            filter: "blur(0.2px)",
-          }}
-        />
-
         <Grid
           container
           spacing={isMobile ? 3 : 2.5}
-          alignItems="center"
           justifyContent="center"
           sx={{ position: "relative" }}
         >
@@ -130,19 +126,6 @@ export default function IslandFlourishFooter({
                   py: 2,
                 }}
               >
-                {/* petal halo */}
-                <Box
-                  sx={{
-                    position: "absolute",
-                    inset: -26,
-                    borderRadius: 999,
-                    background:
-                      "radial-gradient(circle at 50% 50%, rgba(107,170,106,0.22), transparent 60%)",
-                    filter: "blur(2px)",
-                    pointerEvents: "none",
-                  }}
-                />
-
                 <Box
                   component="img"
                   src={logoSrc}
@@ -153,7 +136,6 @@ export default function IslandFlourishFooter({
                     display: "block",
                     position: "relative",
                     zIndex: 1,
-                    filter: "drop-shadow(0 10px 24px rgba(0,0,0,0.55))",
                   }}
                 />
               </Box>
@@ -162,25 +144,13 @@ export default function IslandFlourishFooter({
                 variant="body2"
                 sx={{
                   maxWidth: 380,
-                  color: "rgba(107,170,106,0.72)",
+                  color: "#304742",
                   fontFamily: "GeorgiaB",
                   fontWeight: 700,
                   letterSpacing: "0.01em",
                 }}
               >
                 {tagline}
-              </Typography>
-
-              <Typography
-                variant="caption"
-                sx={{
-                  color: "rgba(255,255,255,0.35)",
-                  fontFamily: "GeorgiaB",
-                  fontWeight: 700,
-                  letterSpacing: "0.02em",
-                }}
-              >
-                {locationText}
               </Typography>
             </Box>
           </Grid>
@@ -189,9 +159,6 @@ export default function IslandFlourishFooter({
             <Box
               sx={{
                 borderRadius: 5,
-                border: "1px solid rgba(107,170,106,0.22)",
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))",
                 p: 2.2,
               }}
             >
@@ -200,7 +167,7 @@ export default function IslandFlourishFooter({
                 sx={{
                   fontFamily: "GeorgiaB",
                   fontWeight: 800,
-                  color: "#6BAA6A",
+                  color: "#304742",
                   letterSpacing: "0.02em",
                   mb: 1.25,
                 }}
@@ -211,27 +178,24 @@ export default function IslandFlourishFooter({
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1.05 }}>
                 {links.map((l) => {
                   const active = isActive(l.href)
+
                   return (
                     <Button
                       key={l.href}
                       onClick={() => go(l.href)}
                       sx={{
-                        justifyContent: "flex-start",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
                         textTransform: "none",
                         fontFamily: "GeorgiaB",
                         fontWeight: 800,
-                        color: "rgba(107,170,106,0.92)",
+                        color: "#304742",
                         borderRadius: 999,
                         px: 2,
                         py: 1.05,
-                        background:
-                          "linear-gradient(90deg, rgba(107,170,106,0.08), transparent)",
-                        border: "1px solid rgba(107,170,106,0.18)",
-                        "&:hover": {
-                          background:
-                            "linear-gradient(90deg, rgba(107,170,106,0.14), transparent)",
-                          borderColor: "rgba(107,170,106,0.30)",
-                        },
+                        border: "1px solid #304742",
+                        width: "100%",
                       }}
                     >
                       <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -240,11 +204,38 @@ export default function IslandFlourishFooter({
                             fontFamily: "GeorgiaB",
                             fontWeight: 800,
                             letterSpacing: "0.01em",
+                            color: "#304742",
                           }}
                         >
                           {l.label}
                         </Typography>
-                        <Flower show={active} />
+                      </Box>
+
+                      <Box
+                        sx={{
+                          width: 22,
+                          height: 22,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          ml: 1.25,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {active ? (
+                          <Typography
+                            aria-hidden="true"
+                            sx={{
+                              color: "#304742",
+                              fontFamily: "GeorgiaB",
+                              fontSize: "1rem",
+                              lineHeight: 1,
+                              fontWeight: 800,
+                            }}
+                          >
+                            ✿
+                          </Typography>
+                        ) : null}
                       </Box>
                     </Button>
                   )
@@ -255,8 +246,7 @@ export default function IslandFlourishFooter({
         </Grid>
       </Box>
 
-      {/* Bottom bar */}
-      <Divider sx={{ borderColor: "rgba(107,170,106,0.18)" }} />
+      <Divider sx={{ borderColor: "#304742" }} />
       <Box
         sx={{
           px: { xs: 2, md: 4 },
@@ -271,7 +261,7 @@ export default function IslandFlourishFooter({
         <Typography
           variant="caption"
           sx={{
-            color: "rgba(107,170,106,0.65)",
+            color: "#304742",
             fontFamily: "GeorgiaB",
             fontWeight: 800,
             letterSpacing: "0.02em",
@@ -285,7 +275,7 @@ export default function IslandFlourishFooter({
             style={{
               display: "flex",
               margin: "auto",
-              borderBottom: "1px solid rgba(107,170,106,0.92)",
+              borderBottom: "1px solid #304742",
               borderRadius: 0,
               textTransform: "none",
             }}
@@ -297,7 +287,7 @@ export default function IslandFlourishFooter({
                 fontFamily: "GeorgiaB",
                 fontWeight: 800,
                 letterSpacing: "0.02em",
-                color: "rgba(107,170,106,0.92)",
+                color: "#304742",
               }}
             >
               Website created by Bergquist Applications LLC
@@ -309,8 +299,8 @@ export default function IslandFlourishFooter({
               width: 10,
               height: 10,
               borderRadius: 999,
-              backgroundColor: "rgba(107,170,106,0.85)",
-              boxShadow: "0 0 18px rgba(107,170,106,0.25)",
+              backgroundColor: "#304742",
+              boxShadow: "0 0 18px #304742",
             }}
           />
         </Box>
