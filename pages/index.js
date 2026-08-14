@@ -5,12 +5,10 @@ import { db } from "../Firebase/FirebaseInit"
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore"
 import { motion } from "framer-motion"
 
-function RevealOnScroll({
-  children,
-  delay = 0,
-  threshold = 0.35,
-  rootMargin = "0px 0px -15% 0px",
-}) {
+const IMAGES_PER_SLIDE = 3
+const PRELOAD_IMAGE_COUNT = 18
+
+function RevealOnScroll({ children, delay = 0 }) {
   const ref = useRef(null)
   const [shown, setShown] = useState(false)
 
@@ -36,7 +34,7 @@ function RevealOnScroll({
           obs.disconnect()
         }
       },
-      { threshold, root: null, rootMargin }
+      { threshold: 0, root: null, rootMargin: "0px" }
     )
 
     obs.observe(el)
@@ -46,10 +44,10 @@ function RevealOnScroll({
         obs.disconnect()
       } catch {}
     }
-  }, [shown, threshold, rootMargin])
+  }, [shown])
 
   return (
-    <div ref={ref}>
+    <div ref={ref} style={{ minHeight: 1 }}>
       <motion.div
         initial={false}
         animate={shown ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
@@ -67,7 +65,7 @@ export default class Index extends React.Component {
     super(props)
     this.state = {
       works: [],
-      imgs: [],
+      imgsByWorkId: {},
       activeSlideIndex: 0,
       bio: false,
     }
@@ -77,15 +75,17 @@ export default class Index extends React.Component {
   slideInterval = null
   worksUnsub = null
   imgsUnsubs = new Map()
+  preloadedImages = new Map()
 
   componentDidMount() {
     const worksRef = collection(db, "works")
 
     this.worksUnsub = onSnapshot(worksRef, (workSnap) => {
-      this.setState({ works: [], imgs: [] })
-
       for (const unsub of this.imgsUnsubs.values()) unsub()
       this.imgsUnsubs.clear()
+
+      const works = []
+      const imgsByWorkId = {}
 
       workSnap.forEach((workDoc) => {
         const workData = workDoc.data()
@@ -99,10 +99,14 @@ export default class Index extends React.Component {
             : "",
         }
 
-        this.setState((prev) => ({
-          works: [...prev.works, normalized],
-        }))
+        works.push(normalized)
+        imgsByWorkId[workId] = []
+      })
 
+      this.setState({ works, imgsByWorkId, activeSlideIndex: 0 })
+
+      works.forEach((work) => {
+        const workId = work.id
         const imgsRef = collection(db, "works", workId, "imgs")
         const imgsQuery = query(imgsRef, orderBy("created", "asc"))
 
@@ -113,13 +117,13 @@ export default class Index extends React.Component {
             imgs.push({
               url: img.url,
               message: img.message,
-              collection: normalized.collection,
-              item: normalized.item,
+              collection: work.collection,
+              item: work.item,
             })
           })
 
           this.setState((prev) => ({
-            imgs: [...prev.imgs, ...imgs],
+            imgsByWorkId: { ...prev.imgsByWorkId, [workId]: imgs },
           }))
         })
 
@@ -131,9 +135,18 @@ export default class Index extends React.Component {
       const len = this.slidesLen || 0
       if (!len) return
       this.setState((prev) => ({
-        activeSlideIndex: (prev.activeSlideIndex + 1) % len,
+        activeSlideIndex: prev.activeSlideIndex + 1,
       }))
     }, 12000)
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      prevState.activeSlideIndex !== this.state.activeSlideIndex ||
+      prevState.imgsByWorkId !== this.state.imgsByWorkId
+    ) {
+      this.preloadUpcomingSlideImages()
+    }
   }
 
   componentWillUnmount() {
@@ -141,29 +154,94 @@ export default class Index extends React.Component {
     for (const unsub of this.imgsUnsubs.values()) unsub()
     this.imgsUnsubs.clear()
     if (this.slideInterval) clearInterval(this.slideInterval)
+    this.preloadedImages.clear()
   }
 
-  render() {
+  getAllImgsFlat() {
+    return Object.values(this.state.imgsByWorkId || {}).flat()
+  }
+
+  getSlideItems() {
     const itemMap = new Map()
 
-    ;(this.state.imgs || []).forEach((img) => {
+    this.getAllImgsFlat().forEach((img) => {
+      if (!img?.url) return
       const key = String(img.item || "Untitled")
       if (!itemMap.has(key)) itemMap.set(key, [])
       itemMap.get(key).push(img)
     })
 
-    const slides = []
-    for (const [item, imgs] of itemMap.entries()) {
-      for (let i = 0; i < imgs.length; i += 3) {
-        const chunk = imgs.slice(i, i + 3)
-        if (chunk.length === 3) slides.push({ item, imgs: chunk })
-      }
+    return Array.from(itemMap.entries())
+      .map(([item, imgs]) => {
+        const chunks = []
+
+        for (let i = 0; i + IMAGES_PER_SLIDE <= imgs.length; i += IMAGES_PER_SLIDE) {
+          chunks.push(imgs.slice(i, i + IMAGES_PER_SLIDE))
+        }
+
+        return { item, chunks }
+      })
+      .filter(({ chunks }) => chunks.length)
+  }
+
+  getSlideAt(position, slideItems = this.getSlideItems()) {
+    if (!slideItems.length) return null
+
+    const safePosition = Math.max(0, position || 0)
+    const itemIndex = safePosition % slideItems.length
+    const roundIndex = Math.floor(safePosition / slideItems.length)
+    const slideItem = slideItems[itemIndex]
+    const chunkIndex = roundIndex % slideItem.chunks.length
+
+    return {
+      item: slideItem.item,
+      imgs: slideItem.chunks[chunkIndex],
+      key: `${slideItem.item}-${chunkIndex}-${safePosition}`,
+    }
+  }
+
+  preloadUpcomingSlideImages() {
+    if (typeof window === "undefined" || typeof window.Image === "undefined") return
+
+    const slideItems = this.getSlideItems()
+    if (!slideItems.length) return
+
+    const urls = []
+    const seenUrls = new Set()
+    const maxSlidesToCheck = Math.max(
+      slideItems.length,
+      Math.ceil(PRELOAD_IMAGE_COUNT / IMAGES_PER_SLIDE) + slideItems.length
+    )
+
+    for (
+      let offset = 0;
+      urls.length < PRELOAD_IMAGE_COUNT && offset < maxSlidesToCheck;
+      offset += 1
+    ) {
+      const slide = this.getSlideAt(this.state.activeSlideIndex + offset, slideItems)
+      if (!slide) break
+
+      slide.imgs.forEach((img) => {
+        if (!img?.url || seenUrls.has(img.url)) return
+        seenUrls.add(img.url)
+        urls.push(img.url)
+      })
     }
 
-    this.slidesLen = slides.length
+    urls.forEach((url) => {
+      if (this.preloadedImages.has(url)) return
+      const image = new window.Image()
+      image.decoding = "async"
+      image.src = url
+      this.preloadedImages.set(url, image)
+    })
+  }
 
-    const safeIndex = slides.length ? this.state.activeSlideIndex % slides.length : 0
-    const activeSlide = slides[safeIndex]
+  render() {
+    const slideItems = this.getSlideItems()
+    this.slidesLen = slideItems.length
+
+    const activeSlide = this.getSlideAt(this.state.activeSlideIndex, slideItems)
 
     return (
       <div>
@@ -267,7 +345,7 @@ export default class Index extends React.Component {
             </Grid>
 
             {/* Slideshow section now sits INSIDE the same hero background */}
-            <RevealOnScroll delay={0.06} threshold={0} rootMargin="0px 0px -10% 0px">
+            <RevealOnScroll delay={0.06}>
               <Grid
                 container
                 style={{
@@ -281,7 +359,7 @@ export default class Index extends React.Component {
               >
                 {activeSlide ? (
                   <motion.div
-                    key={safeIndex}
+                    key={activeSlide.key}
                     style={{ position: "absolute", inset: 0, width: "100%" }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -410,7 +488,7 @@ export default class Index extends React.Component {
             A LA CARTE SECTION (replaces Events)
            ========================= */}
         <div>
-          <RevealOnScroll delay={0.02} threshold={0}>
+          <RevealOnScroll delay={0.02}>
             <div
               style={{
                 position: "relative",

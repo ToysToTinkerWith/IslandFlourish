@@ -18,12 +18,7 @@ import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined"
 import EventAvailableOutlinedIcon from "@mui/icons-material/EventAvailableOutlined"
 import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined"
 
-function RevealOnScroll({
-  children,
-  delay = 0,
-  threshold = 0.35,
-  rootMargin = "0px 0px -15% 0px",
-}) {
+function RevealOnScroll({ children, delay = 0 }) {
   const ref = React.useRef(null)
   const [shown, setShown] = React.useState(false)
 
@@ -49,7 +44,7 @@ function RevealOnScroll({
           obs.disconnect()
         }
       },
-      { threshold, root: null, rootMargin }
+      { threshold: 0, root: null, rootMargin: "0px" }
     )
 
     obs.observe(el)
@@ -59,10 +54,10 @@ function RevealOnScroll({
         obs.disconnect()
       } catch {}
     }
-  }, [shown, threshold, rootMargin])
+  }, [shown])
 
   return (
-    <div ref={ref}>
+    <div ref={ref} style={{ minHeight: 1 }}>
       <motion.div
         initial={false}
         animate={
@@ -1004,16 +999,16 @@ export default class ALaCartePage extends React.Component {
     return (
       <div style={s.sectionWrap}>
         {(corners === "all" || corners.includes("tl")) && (
-          <img src="/accent.svg" alt="" aria-hidden="true" style={s.accentTL} />
+          <img src="/flowerAccent.png" alt="" aria-hidden="true" style={s.accentTL} />
         )}
         {(corners === "all" || corners.includes("tr")) && (
-          <img src="/accent.svg" alt="" aria-hidden="true" style={s.accentTR} />
+          <img src="/flowerAccent.png" alt="" aria-hidden="true" style={s.accentTR} />
         )}
         {(corners === "all" || corners.includes("bl")) && (
-          <img src="/accent.svg" alt="" aria-hidden="true" style={s.accentBL} />
+          <img src="/flowerAccent.png" alt="" aria-hidden="true" style={s.accentBL} />
         )}
         {(corners === "all" || corners.includes("br")) && (
-          <img src="/accent.svg" alt="" aria-hidden="true" style={s.accentBR} />
+          <img src="/flowerAccent.png" alt="" aria-hidden="true" style={s.accentBR} />
         )}
 
         <div style={s.lowerContent}>{content}</div>
@@ -1063,7 +1058,7 @@ export default class ALaCartePage extends React.Component {
               </Grid>
             </Grid>
 
-            <RevealOnScroll delay={0.06} threshold={0} rootMargin="0px 0px -10% 0px">
+            <RevealOnScroll delay={0.06}>
               <div style={s.heroPanelWrap}>
                 <div style={s.heroPanel}>{this.renderIntroCard(s)}</div>
               </div>
@@ -1071,15 +1066,15 @@ export default class ALaCartePage extends React.Component {
           </div>
         </div>
 
-        <RevealOnScroll delay={0.02} threshold={0}>
+        <RevealOnScroll delay={0.02}>
           {this.renderSectionShell(this.renderBottomNotes(s), "tlbr")}
         </RevealOnScroll>
 
-        <RevealOnScroll delay={0.03} threshold={0}>
+        <RevealOnScroll delay={0.03}>
           {this.renderSectionShell(this.renderHowItWorks(s), "tlbr")}
         </RevealOnScroll>
 
-        <RevealOnScroll delay={0.04} threshold={0}>
+        <RevealOnScroll delay={0.04}>
           {this.renderSectionShell(
             <div id="menu">
               <Typography variant="h2" style={s.softSectionTitle}>
@@ -1097,15 +1092,15 @@ export default class ALaCartePage extends React.Component {
           )}
         </RevealOnScroll>
 
-        <RevealOnScroll delay={0.05} threshold={0}>
+        <RevealOnScroll delay={0.05}>
           {this.renderSectionShell(this.renderCeremonyReception(s), "tlbr")}
         </RevealOnScroll>
 
-        <RevealOnScroll delay={0.06} threshold={0}>
+        <RevealOnScroll delay={0.06}>
           {this.renderSectionShell(this.renderPickupDelivery(s), "tlbr")}
         </RevealOnScroll>
 
-        <RevealOnScroll delay={0.07} threshold={0}>
+        <RevealOnScroll delay={0.07}>
           {this.renderSectionShell(
             <div>
               <Typography variant="h2" style={s.softSectionTitle}>

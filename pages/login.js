@@ -25,12 +25,7 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined"
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined"
 import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined"
 
-function RevealOnScroll({
-  children,
-  delay = 0,
-  threshold = 0.35,
-  rootMargin = "0px 0px -15% 0px",
-}) {
+function RevealOnScroll({ children, delay = 0 }) {
   const ref = React.useRef(null)
   const [shown, setShown] = React.useState(false)
 
@@ -56,7 +51,7 @@ function RevealOnScroll({
           obs.disconnect()
         }
       },
-      { threshold, root: null, rootMargin }
+      { threshold: 0, root: null, rootMargin: "0px" }
     )
 
     obs.observe(el)
@@ -66,10 +61,10 @@ function RevealOnScroll({
         obs.disconnect()
       } catch {}
     }
-  }, [shown, threshold, rootMargin])
+  }, [shown])
 
   return (
-    <div ref={ref}>
+    <div ref={ref} style={{ minHeight: 1 }}>
       <motion.div
         initial={false}
         animate={
@@ -512,7 +507,7 @@ export default class login extends React.Component {
         String(this.state.loginPassword || "")
       )
 
-      window.location.href = "/moments"
+      window.location.href = "/products"
     } catch (error) {
       this.setState({
         loginSubmitting: false,
@@ -1070,7 +1065,7 @@ export default class login extends React.Component {
               </Grid>
             </Grid>
 
-            <RevealOnScroll delay={0.06} threshold={0.25} rootMargin="0px 0px -10% 0px">
+            <RevealOnScroll delay={0.06}>
               <div style={s.heroPanelWrap}>
                 <div style={s.heroPanel}>
                   <Grid container spacing={3}>
@@ -1087,7 +1082,7 @@ export default class login extends React.Component {
           </div>
         </div>
 
-        <RevealOnScroll delay={0.03} threshold={0.25}>
+        <RevealOnScroll delay={0.03}>
           {this.renderSectionShell(
             <Card style={s.card} elevation={0}>
               <div style={s.cardGlow} />

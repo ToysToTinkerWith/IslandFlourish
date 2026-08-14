@@ -1,0 +1,30 @@
+::-webkit-scrollbar {
+    display: none;
+
+  }
+
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+  
+  @font-face {
+    font-family: 'Georgia';
+    src: local('georgia'), url("/fonts/georgia.ttf") format('truetype');
+    /* other formats include: 'woff2', 'truetype, 'opentype',
+                              'embedded-opentype', and 'svg' */
+  }
+
+  @font-face {
+    font-family: 'GeorgiaB';
+    src: local('georgiab'), url("/fonts/georgiab.ttf") format('truetype');
+    /* other formats include: 'woff2', 'truetype, 'opentype',
+                              'embedded-opentype', and 'svg' */
+  }
+
+  @font-face {
+    font-family: 'Brasika';
+    src: local('Brasika'), url("/fonts/Brasika.otf") format('opentype');
+    /* other formats include: 'woff2', 'truetype, 'opentype',
+                              'embedded-opentype', and 'svg' */
+  }

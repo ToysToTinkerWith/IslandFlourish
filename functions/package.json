@@ -1,15 +1,17 @@
 {
-  "name": "bergquist",
-  "main": "functions/server.js",
-  "version": "1.0.0",
-  "private": true,
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "out": "next build && next export",
-    "deploy": "firebase deploy --only functions,hosting"
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
   },
+  "engines": {
+    "node": "24"
+  },
+  "main": "index.js",
   "dependencies": {
     "@emotion/react": "^11.6.0",
     "@emotion/styled": "^11.6.0",
@@ -21,7 +23,7 @@
     "algosdk": "^1.19.0",
     "crypto": "^1.0.1",
     "firebase": "^10.8.0",
-    "firebase-admin": "^11.10.1",
+    "firebase-admin": "^13.6.0",
     "firebase-functions": "^7.0.3",
     "framer-motion": "^4.1.17",
     "micro": "^9.3.4",
@@ -33,5 +35,9 @@
     "react-dom": "^18.2.0",
     "resend": "^6.9.3",
     "stripe": "^8.203.0"
-  }
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.4.1"
+  },
+  "private": true
 }

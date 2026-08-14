@@ -25,6 +25,9 @@ import {
 import CloseIcon from "@mui/icons-material/Close"
 import LocalFloristIcon from "@mui/icons-material/LocalFlorist"
 
+const COLLECTION_PREVIEW_LIMIT = 200
+const COLLECTION_PRELOAD_AHEAD = 5
+
 export default class Work extends React.Component {
   static contextType = AuthContext
 
@@ -44,6 +47,7 @@ export default class Work extends React.Component {
   worksUnsub = null
   imgsUnsubs = new Map()
   slideshowTimer = null
+  preloadedPreviewImages = new Map()
 
   componentDidMount() {
     const STEP_MS = 4500
@@ -103,28 +107,80 @@ export default class Work extends React.Component {
     })
   }
 
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      prevState.imgsByWorkId !== this.state.imgsByWorkId ||
+      prevState.works !== this.state.works ||
+      prevState.tick !== this.state.tick
+    ) {
+      this.preloadCollectionPreviewImages()
+    }
+  }
+
   componentWillUnmount() {
     if (this.worksUnsub) this.worksUnsub()
     for (const unsub of this.imgsUnsubs.values()) unsub()
     this.imgsUnsubs.clear()
     if (this.slideshowTimer) clearInterval(this.slideshowTimer)
+    this.preloadedPreviewImages.clear()
   }
 
   getAllImgsFlat() {
     return Object.values(this.state.imgsByWorkId || {}).flat()
   }
 
-  getActiveImageForCollection(col, limit = 200) {
-    const imgs = this.getAllImgsFlat()
+  getCollectionSeed(col) {
+    return Array.from(String(col || "")).reduce((a, c) => a + c.charCodeAt(0), 0)
+  }
+
+  getImagesForCollection(col, limit = COLLECTION_PREVIEW_LIMIT) {
+    return this.getAllImgsFlat()
       .filter((img) => img.collection === col && img.url)
       .slice(0, limit)
+  }
+
+  getActiveImageForCollection(col, limit = COLLECTION_PREVIEW_LIMIT) {
+    const imgs = this.getImagesForCollection(col, limit)
 
     if (imgs.length === 0) return { img: null, idx: 0, total: 0 }
 
-    const seed = Array.from(String(col || "")).reduce((a, c) => a + c.charCodeAt(0), 0)
+    const seed = this.getCollectionSeed(col)
     const idx = (this.state.tick + seed) % imgs.length
 
     return { img: imgs[idx], idx, total: imgs.length }
+  }
+
+  preloadCollectionPreviewImages() {
+    if (typeof window === "undefined" || typeof window.Image === "undefined") return
+
+    const collections = Array.from(
+      new Set(this.state.works.map((work) => work.collection || "").filter(Boolean))
+    )
+    const urlsToPreload = new Set()
+
+    collections.forEach((col) => {
+      const imgs = this.getImagesForCollection(col)
+      if (!imgs.length) return
+
+      const seed = this.getCollectionSeed(col)
+      for (let offset = 0; offset <= COLLECTION_PRELOAD_AHEAD; offset += 1) {
+        const idx = (this.state.tick + offset + seed) % imgs.length
+        const url = imgs[idx]?.url
+        if (url) urlsToPreload.add(url)
+      }
+    })
+
+    urlsToPreload.forEach((url) => {
+      if (this.preloadedPreviewImages.has(url)) return
+
+      const image = new window.Image()
+      image.decoding = "async"
+      if ("fetchPriority" in image) image.fetchPriority = "high"
+      image.src = url
+      if (image.decode) image.decode().catch(() => {})
+
+      this.preloadedPreviewImages.set(url, image)
+    })
   }
 
   styles() {
@@ -671,7 +727,7 @@ export default class Work extends React.Component {
 
                               <div style={s.preview}>
                                 {img ? (
-                                  <AnimatePresence mode="wait">
+                                  <AnimatePresence initial={false}>
                                     <motion.div
                                       key={`${col}-${idx}-${img.url}`}
                                       style={{ position: "absolute", inset: 0, zIndex: 1 }}
@@ -683,7 +739,9 @@ export default class Work extends React.Component {
                                       <img
                                         src={img.url}
                                         alt=""
-                                        loading={index <= 2 ? "eager" : "lazy"}
+                                        loading={index <= 5 ? "eager" : "lazy"}
+                                        decoding="async"
+                                        fetchPriority={index <= 2 ? "high" : "auto"}
                                         style={{
                                           position: "absolute",
                                           inset: 0,

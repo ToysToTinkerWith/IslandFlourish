@@ -29,12 +29,7 @@ import LocalFloristIcon from "@mui/icons-material/LocalFlorist"
 import ZoomInIcon from "@mui/icons-material/ZoomIn"
 import CloseIcon from "@mui/icons-material/Close"
 
-function RevealOnScroll({
-  children,
-  delay = 0,
-  threshold = 0.15,
-  rootMargin = "0px 0px -15% 0px",
-}) {
+function RevealOnScroll({ children, delay = 0 }) {
   const ref = React.useRef(null)
   const [shown, setShown] = React.useState(false)
 
@@ -60,7 +55,7 @@ function RevealOnScroll({
           obs.disconnect()
         }
       },
-      { threshold, root: null, rootMargin }
+      { threshold: 0, root: null, rootMargin: "0px" }
     )
 
     obs.observe(el)
@@ -70,10 +65,10 @@ function RevealOnScroll({
         obs.disconnect()
       } catch {}
     }
-  }, [shown, threshold, rootMargin])
+  }, [shown])
 
   return (
-    <div ref={ref}>
+    <div ref={ref} style={{ minHeight: 1 }}>
       <motion.div
         initial={false}
         animate={
@@ -1683,7 +1678,7 @@ export default class EventFlowersForm extends React.Component {
           <img src="/accent.svg" alt="" aria-hidden="true" style={s.accentBR} />
 
           <div style={s.aLaCarteInner}>
-            <RevealOnScroll delay={0.02} threshold={0} rootMargin="0px 0px -10% 0px">
+            <RevealOnScroll delay={0.02}>
               <div style={s.sectionHeader}>
                 <Typography variant="h2" style={s.sectionTitle}>
                   A La Carte
@@ -1697,7 +1692,7 @@ export default class EventFlowersForm extends React.Component {
               </div>
             </RevealOnScroll>
 
-            <RevealOnScroll delay={0.04} threshold={0} rootMargin="0px 0px -6% 0px">
+            <RevealOnScroll delay={0.04}>
               <Card style={s.unifiedCard} elevation={0}>
                 <div style={s.unifiedGlow} />
 
@@ -1961,7 +1956,7 @@ export default class EventFlowersForm extends React.Component {
           </div>
         </div>
 
-        <RevealOnScroll delay={0.02} threshold={0}>
+        <RevealOnScroll delay={0.02}>
           <div style={s.sectionWrap}>
             <img src="/accent.svg" alt="" aria-hidden="true" style={s.accentTL} />
             <img src="/accent.svg" alt="" aria-hidden="true" style={s.accentTR} />
